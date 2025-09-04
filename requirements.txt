@@ -1,0 +1,24 @@
+# FastAPI and web framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# Task queue
+celery==5.3.4
+redis==5.0.1
+
+# Data processing
+pydantic==2.5.2
+python-dotenv==1.0.0
+
+# Fake data and utilities
+faker==20.1.0
+structlog==23.2.0
+
+# Testing (optional but recommended)
+pytest==7.4.3
+httpx==0.25.2

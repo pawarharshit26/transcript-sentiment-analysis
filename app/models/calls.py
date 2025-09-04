@@ -10,10 +10,10 @@ class DBCall(Base):
     __tablename__ = "calls"
 
     id = Column(Integer, primary_key=True, index=True)
-    call_id = Column(String, unique=True, index=True, nullable=False)
+    call_id = Column(Integer, unique=True, index=True, nullable=False)
 
     agent_id = Column(Integer, ForeignKey("agents.id"))
-    customer_id = Column(String, index=True)
+    customer_id = Column(Integer, index=True)
     language = Column(String)
     start_time = Column(DateTime)
     duration_seconds = Column(Integer)

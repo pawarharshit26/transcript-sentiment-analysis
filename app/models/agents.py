@@ -11,5 +11,5 @@ class Agent(Base):
     name = Column(String, nullable=True)
 
     # relationship with calls
-    calls = relationship("Call", back_populates="agent")
+    calls = relationship("DBCall", back_populates="agent")
 
