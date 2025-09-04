@@ -1,0 +1,5 @@
+.env
+app/__pycache__/
+app/workers/__pycache__/
+app/models/__pycache__/
+data/

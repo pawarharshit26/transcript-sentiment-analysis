@@ -1,0 +1,108 @@
+import os
+import json
+from celery import shared_task
+from app.faker import FakerDB
+
+from app.models import DBCall
+from app.models.calls import CallRepository
+from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime
+import structlog
+
+logger = structlog.get_logger(__name__)
+
+DATA_DIR = "data"
+os.makedirs(DATA_DIR, exist_ok=True)
+
+
+
+
+
+@shared_task(bind=True)
+def ingest_call(call_id: int):
+    """
+    Orchestrate: get fake call -> dump -> normalize -> map -> save
+    """
+    logger.info(f"Starting ingestion for call_id: {call_id}")
+
+    raw_call = FakerDB.get_call(call_id)
+    dump_call(raw_call, call_id)
+    norm_call = normalize_call(raw_call)
+    db_call = map_to_db_call(norm_call)
+    saved = save_call(db_call)
+
+    logger.info(f"Completed ingestion for call_id: {call_id}")
+
+    return {"status": "success", "call_id": saved.call_id}
+
+
+def dump_call(call: dict, call_id: int):
+    """Save raw call JSON to disk"""
+    filepath = os.path.join(DATA_DIR, f"{call_id}.json")
+    with open(filepath, "w") as f:
+        json.dump(call, f, indent=2)
+
+    logger.info(f"Dumped raw call data to {filepath}")
+
+
+def normalize_call(call: dict) -> dict:
+    """Validate & normalize fields for DB storage"""
+    normalized_data = {}
+
+    # 1. Validate required fields
+    required_fields = ["call_id", "agent_id", "customer_id", "language", "start_time", "duration_seconds", "transcript"]
+    for field in required_fields:
+        if field not in call or call[field] in (None, "", []):
+            logger.error(f"Missing required field: {field}", call_id=call.get("call_id"))
+            raise ValueError(f"Missing required field: {field}")
+
+    # 2. Normalize transcript
+    transcript = call.get("transcript", "")
+    transcript = transcript.replace("\n", " ").strip()
+    transcript = " ".join(transcript.split())  # collapse spaces
+    normalized_data["transcript"] = transcript.lower()
+
+    # 3. Normalize start_time -> datetime for Postgres
+    start_time = call.get("start_time")
+    if isinstance(start_time, str):
+        try:
+            start_time = datetime.fromisoformat(start_time)
+        except ValueError:
+            logger.error(f"Invalid datetime format for start_time: {start_time}", call_id=call.get("call_id"))
+            raise ValueError(f"Invalid datetime format for start_time: {start_time}")
+    normalized_data["start_time"] = start_time
+
+    # 4. Copy remaining fields as-is
+    normalized_data["call_id"] = int(call["call_id"])
+    normalized_data["agent_id"] = int(call["agent_id"])
+    normalized_data["customer_id"] = int(call["customer_id"])
+    normalized_data["language"] = str(call["language"]).lower()
+    normalized_data["duration_seconds"] = int(call["duration_seconds"])
+
+    logger.info(f"Normalized call data for call_id: {call['call_id']}", normalized_data=normalized_data)
+
+    return normalized_data
+
+
+def map_to_db_call(call: dict) -> DBCall:
+    """Map dict -> DB model"""
+    return DBCall(
+        id=call["call_id"],
+        call_id=call["call_id"],
+        agent_id=call["agent_id"],
+        customer_id=call["customer_id"],
+        language=call["language"],
+        start_time=call["start_time"],
+        duration_seconds=call["duration_seconds"],
+        transcript=call["transcript"],
+        agent_talk_ratio=None,
+        sentiment_score=None,
+        embedding=None
+    )
+
+
+def save_call(db_call: DBCall):
+    repo = CallRepository()  # uses default SessionLocal
+    saved = repo.create_call(db_call)
+    logger.info("Saved call to DB", call_id=saved.call_id)
+    return saved    

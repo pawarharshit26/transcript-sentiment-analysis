@@ -1,0 +1,1 @@
+from app.workers.ingestion import ingest_call
