@@ -7,6 +7,7 @@ from app.models import DBCall
 from app.models.calls import CallRepository
 from datetime import datetime
 import structlog
+from app.workers.insights import generate_call_insights
 
 logger = structlog.get_logger(__name__)
 
@@ -28,6 +29,7 @@ def ingest_call(self, call_id: int):
     norm_call = normalize_call(raw_call)
     db_call = map_to_db_call(norm_call)
     saved = save_call(db_call)
+    trigger_generate_call_insights(saved.call_id)
     logger.info(f"Completed ingestion for call_id: {call_id}", taskId=self.request.id)
     
     return {"status": "success", "call_id": saved.call_id, "taskId": self.request.id}
@@ -120,3 +122,9 @@ def save_call(db_call: DBCall):
     saved = repo.create_or_update(db_call)
     logger.info("Saved call to DB", call_id=saved.call_id)
     return saved    
+
+def trigger_generate_call_insights(call_id: int):
+    generate_call_insights.apply_async(
+        kwargs={"call_id": call_id},
+        queue="insights"
+    )
