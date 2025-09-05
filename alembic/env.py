@@ -15,7 +15,6 @@ sys.path.insert(0, str(project_root))
 # Import our database setup and models
 from app.settings import DATABASE_URL
 from app.db import Base
-from app.models.agents import Agent
 from app.models.calls import DBCall
 
 # this is the Alembic Config object, which provides

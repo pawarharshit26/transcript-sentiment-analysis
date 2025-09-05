@@ -15,7 +15,7 @@ class DBCall(Base):
     agent_id = Column(Integer)
     customer_id = Column(Integer, index=True)
     language = Column(String)
-    start_time = Column(DateTime)
+    start_time = Column(DateTime, index=True)
     duration_seconds = Column(Integer)
     transcript = Column(Text)
 
