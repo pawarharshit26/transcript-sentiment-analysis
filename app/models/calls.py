@@ -12,7 +12,7 @@ class DBCall(Base):
     id = Column(Integer, primary_key=True, index=True)
     call_id = Column(Integer, unique=True, index=True, nullable=False)
 
-    agent_id = Column(Integer, ForeignKey("agents.id"))
+    agent_id = Column(Integer)
     customer_id = Column(Integer, index=True)
     language = Column(String)
     start_time = Column(DateTime)
@@ -23,9 +23,6 @@ class DBCall(Base):
     agent_talk_ratio = Column(Float, nullable=True)
     sentiment_score = Column(Float, nullable=True)
     embedding = Column(Text, nullable=True)  # can store as JSON or vector
-
-    # relationship back to agent
-    agent = relationship("Agent", back_populates="calls")
 
 
 class CallRepository:

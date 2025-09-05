@@ -5,7 +5,6 @@ from app.faker import FakerDB
 
 from app.models import DBCall
 from app.models.calls import CallRepository
-from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 import structlog
 

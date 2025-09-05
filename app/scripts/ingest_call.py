@@ -1,5 +1,8 @@
 from app.workers.ingestion import ingest_call
+from app.celery import celery
 
+
+ingest_call.app = celery
 
 def main():
     for i in range(1, 11):
