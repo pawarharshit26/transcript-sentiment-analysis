@@ -4,4 +4,5 @@ app/workers/__pycache__/
 app/models/__pycache__/
 alembic/__pycache__/
 alembic/versions/__pycache__/
+app/scripts/__pycache__/
 data/

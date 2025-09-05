@@ -17,9 +17,8 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 
 
-
 @shared_task(bind=True)
-def ingest_call(call_id: int):
+def ingest_call(self, call_id: int):
     """
     Orchestrate: get fake call -> dump -> normalize -> map -> save
     """
@@ -30,19 +29,35 @@ def ingest_call(call_id: int):
     norm_call = normalize_call(raw_call)
     db_call = map_to_db_call(norm_call)
     saved = save_call(db_call)
-
-    logger.info(f"Completed ingestion for call_id: {call_id}")
-
-    return {"status": "success", "call_id": saved.call_id}
+    logger.info(f"Completed ingestion for call_id: {call_id}", taskId=self.request.id)
+    
+    return {"status": "success", "call_id": saved.call_id, "taskId": self.request.id}
 
 
 def dump_call(call: dict, call_id: int):
-    """Save raw call JSON to disk"""
-    filepath = os.path.join(DATA_DIR, f"{call_id}.json")
+    """Save raw call JSON to a single file containing all calls"""
+    filepath = os.path.join(DATA_DIR, "all_calls.json")
+    
+    # Load existing calls or create empty list
+    calls_list = []
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, "r") as f:
+                calls_list = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            calls_list = []
+    
+    # Remove existing call with same call_id if it exists
+    calls_list = [existing_call for existing_call in calls_list if existing_call.get("call_id") != call_id]
+    
+    # Add the new call
+    calls_list.append(call)
+    
+    # Write back to file
     with open(filepath, "w") as f:
-        json.dump(call, f, indent=2)
+        json.dump(calls_list, f, indent=2)
 
-    logger.info(f"Dumped raw call data to {filepath}")
+    logger.info(f"Dumped call {call_id} to {filepath} (total calls: {len(calls_list)})")
 
 
 def normalize_call(call: dict) -> dict:
@@ -103,6 +118,6 @@ def map_to_db_call(call: dict) -> DBCall:
 
 def save_call(db_call: DBCall):
     repo = CallRepository()  # uses default SessionLocal
-    saved = repo.create_call(db_call)
+    saved = repo.create_or_update(db_call)
     logger.info("Saved call to DB", call_id=saved.call_id)
     return saved    

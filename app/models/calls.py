@@ -36,7 +36,7 @@ class CallRepository:
         """
         self.session_factory = session_factory
 
-    def create_call(self, db_call: DBCall) -> DBCall:
+    def create(self, db_call: DBCall) -> DBCall:
         """
         Save a call into DB using managed session.
         """
@@ -50,11 +50,11 @@ class CallRepository:
                 db.rollback()
                 raise e
 
-    def get_call(self, call_id: int) -> DBCall:
+    def get(self, call_id: int) -> DBCall:
         with self.session_factory() as db:
             return db.query(DBCall).filter_by(call_id=call_id).first()
 
-    def update_call(self, db_call):
+    def update(self, db_call):
         with self.session_factory() as db:
             try:
                 db.commit()
@@ -63,3 +63,41 @@ class CallRepository:
             except SQLAlchemyError as e:
                 db.rollback()
                 raise e
+
+    def create_or_update(self, db_call: DBCall) -> DBCall:
+        """
+        Create a new call or update existing one based on call_id.
+        Returns the saved/updated call.
+        """
+        with self.session_factory() as db:
+            try:
+                # Check if call already exists
+                existing_call = db.query(DBCall).filter_by(call_id=db_call.call_id).first()
+                
+                if existing_call:
+                    # Update existing call
+                    existing_call.agent_id = db_call.agent_id
+                    existing_call.customer_id = db_call.customer_id
+                    existing_call.language = db_call.language
+                    existing_call.start_time = db_call.start_time
+                    existing_call.duration_seconds = db_call.duration_seconds
+                    existing_call.transcript = db_call.transcript
+                    existing_call.agent_talk_ratio = db_call.agent_talk_ratio
+                    existing_call.sentiment_score = db_call.sentiment_score
+                    existing_call.embedding = db_call.embedding
+                    
+                    db.commit()
+                    db.refresh(existing_call)
+                    return existing_call
+                else:
+                    # Create new call
+                    db.add(db_call)
+                    db.commit()
+                    db.refresh(db_call)
+                    return db_call
+                    
+            except SQLAlchemyError as e:
+                db.rollback()
+                raise e
+    
+    
