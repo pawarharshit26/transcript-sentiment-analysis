@@ -4,11 +4,11 @@ from app.celery import celery
 
 generate_call_insights.app = celery
 
+
 def main():
     for i in range(1, 11):
         result = generate_call_insights.apply_async(
-            kwargs={"call_id": i},
-            queue="insights"
+            kwargs={"call_id": i}, queue="insights"
         )
         print(f"Enqueued task for call_id={i}, task_id={result.id}")
 

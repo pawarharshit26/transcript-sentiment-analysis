@@ -4,12 +4,10 @@ from app.celery import celery
 
 ingest_call.app = celery
 
+
 def main():
     for i in range(1, 11):
-        result = ingest_call.apply_async(
-            kwargs={"call_id": i},
-            queue="ingestion"
-        )
+        result = ingest_call.apply_async(kwargs={"call_id": i}, queue="ingestion")
         print(f"Enqueued task for call_id={i}, task_id={result.id}")
 
 

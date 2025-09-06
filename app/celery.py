@@ -3,11 +3,8 @@ from app.settings import REDIS_URL
 
 # Create Celery instance
 celery = Celery(
-    'app',
+    "app",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=[
-        'app.workers.ingestion',
-        'app.workers.insights'
-    ]
+    include=["app.workers.ingestion", "app.workers.insights"],
 )

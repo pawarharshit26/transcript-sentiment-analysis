@@ -15,8 +15,6 @@ DATA_DIR = "data"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 
-
-
 @shared_task(bind=True)
 def ingest_call(self, call_id: int):
     """
@@ -31,14 +29,14 @@ def ingest_call(self, call_id: int):
     saved = save_call(db_call)
     trigger_generate_call_insights(saved.call_id)
     logger.info(f"Completed ingestion for call_id: {call_id}", taskId=self.request.id)
-    
+
     return {"status": "success", "call_id": saved.call_id, "taskId": self.request.id}
 
 
 def dump_call(call: dict, call_id: int):
     """Save raw call JSON to a single file containing all calls"""
     filepath = os.path.join(DATA_DIR, "all_calls.json")
-    
+
     # Load existing calls or create empty list
     calls_list = []
     if os.path.exists(filepath):
@@ -47,13 +45,17 @@ def dump_call(call: dict, call_id: int):
                 calls_list = json.load(f)
         except (json.JSONDecodeError, FileNotFoundError):
             calls_list = []
-    
+
     # Remove existing call with same call_id if it exists
-    calls_list = [existing_call for existing_call in calls_list if existing_call.get("call_id") != call_id]
-    
+    calls_list = [
+        existing_call
+        for existing_call in calls_list
+        if existing_call.get("call_id") != call_id
+    ]
+
     # Add the new call
     calls_list.append(call)
-    
+
     # Write back to file
     with open(filepath, "w") as f:
         json.dump(calls_list, f, indent=2)
@@ -66,10 +68,20 @@ def normalize_call(call: dict) -> dict:
     normalized_data = {}
 
     # 1. Validate required fields
-    required_fields = ["call_id", "agent_id", "customer_id", "language", "start_time", "duration_seconds", "transcript"]
+    required_fields = [
+        "call_id",
+        "agent_id",
+        "customer_id",
+        "language",
+        "start_time",
+        "duration_seconds",
+        "transcript",
+    ]
     for field in required_fields:
         if field not in call or call[field] in (None, "", []):
-            logger.error(f"Missing required field: {field}", call_id=call.get("call_id"))
+            logger.error(
+                f"Missing required field: {field}", call_id=call.get("call_id")
+            )
             raise ValueError(f"Missing required field: {field}")
 
     # 2. Normalize transcript
@@ -84,7 +96,10 @@ def normalize_call(call: dict) -> dict:
         try:
             start_time = datetime.fromisoformat(start_time)
         except ValueError:
-            logger.error(f"Invalid datetime format for start_time: {start_time}", call_id=call.get("call_id"))
+            logger.error(
+                f"Invalid datetime format for start_time: {start_time}",
+                call_id=call.get("call_id"),
+            )
             raise ValueError(f"Invalid datetime format for start_time: {start_time}")
     normalized_data["start_time"] = start_time
 
@@ -95,7 +110,10 @@ def normalize_call(call: dict) -> dict:
     normalized_data["language"] = str(call["language"]).lower()
     normalized_data["duration_seconds"] = int(call["duration_seconds"])
 
-    logger.info(f"Normalized call data for call_id: {call['call_id']}", normalized_data=normalized_data)
+    logger.info(
+        f"Normalized call data for call_id: {call['call_id']}",
+        normalized_data=normalized_data,
+    )
 
     return normalized_data
 
@@ -113,7 +131,7 @@ def map_to_db_call(call: dict) -> DBCall:
         transcript=call["transcript"],
         agent_talk_ratio=None,
         sentiment_score=None,
-        embedding=None
+        embedding=None,
     )
 
 
@@ -121,10 +139,8 @@ def save_call(db_call: DBCall):
     repo = CallRepository()  # uses default SessionLocal
     saved = repo.create_or_update(db_call)
     logger.info("Saved call to DB", call_id=saved.call_id)
-    return saved    
+    return saved
+
 
 def trigger_generate_call_insights(call_id: int):
-    generate_call_insights.apply_async(
-        kwargs={"call_id": call_id},
-        queue="insights"
-    )
+    generate_call_insights.apply_async(kwargs={"call_id": call_id}, queue="insights")

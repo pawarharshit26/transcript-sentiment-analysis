@@ -4,7 +4,7 @@ import structlog
 
 logging.basicConfig(
     format="%(message)s",
-      stream=sys.stdout,
+    stream=sys.stdout,
     level=logging.INFO,
 )
 
